@@ -1,0 +1,10 @@
+services:
+  order-db:
+    image: postgres:16
+    container_name: order-service-db
+    environment:
+      POSTGRES_DB: order_service
+      POSTGRES_USER: kartlyorder
+      POSTGRES_PASSWORD: order123
+    ports:
+      - "5436:5432"
