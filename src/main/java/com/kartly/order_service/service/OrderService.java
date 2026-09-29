@@ -1,13 +1,13 @@
 package com.kartly.order_service.service;
 
+import com.kartly.order_service.client.PaymentClient;
 import com.kartly.order_service.client.ProductClient;
 import com.kartly.order_service.client.UserClient;
-import com.kartly.order_service.dto.CreateOrderRequest;
-import com.kartly.order_service.dto.OrderItemRequest;
-import com.kartly.order_service.dto.ProductResponse;
-import com.kartly.order_service.dto.UserResponse;
+import com.kartly.order_service.dto.*;
 import com.kartly.order_service.entity.OrderEntity;
 import com.kartly.order_service.entity.OrderItemEntity;
+import com.kartly.order_service.entity.OrderStatus;
+import com.kartly.order_service.exception.PaymentFailedException;
 import com.kartly.order_service.exception.ResourceNotFoundException;
 import com.kartly.order_service.repository.OrderRepository;
 import org.springframework.stereotype.Service;
@@ -21,11 +21,13 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
     private final UserClient userClient;
+    private final PaymentClient paymentClient;
 
-    public OrderService(OrderRepository orderRepository, ProductClient productClient, UserClient userClient) {
+    public OrderService(OrderRepository orderRepository, ProductClient productClient, UserClient userClient, PaymentClient paymentClient) {
         this.orderRepository = orderRepository;
         this.productClient = productClient;
         this.userClient = userClient;
+        this.paymentClient = paymentClient;
     }
 
     public List<OrderEntity> getAllOrders() {
@@ -49,6 +51,7 @@ public class OrderService {
 
         OrderEntity order = new OrderEntity();
         order.setUserId(user.getId());
+        order.setStatus(OrderStatus.PENDING);
 
         BigDecimal total = BigDecimal.ZERO;
         for (OrderItemRequest itemRequest : request.getItems()) {
@@ -65,6 +68,22 @@ public class OrderService {
         }
 
         order.setTotalAmount(total);
-        return orderRepository.save(order);
+
+        OrderEntity savedOrder = orderRepository.save(order);
+
+        ProcessPaymentRequest paymentRequest = new ProcessPaymentRequest();
+        paymentRequest.setOrderId(savedOrder.getId());
+        paymentRequest.setAmount(total);
+
+        try{
+            paymentClient.processPayment(paymentRequest);
+            savedOrder.setStatus(OrderStatus.CONFIRMED);
+        } catch(Exception ex){
+            savedOrder.setStatus(OrderStatus.PAYMENT_FAILED);
+            orderRepository.save(savedOrder);
+            throw new PaymentFailedException("Payment failed for order" +savedOrder.getId() + ": " + ex.getMessage());
+        }
+
+        return orderRepository.save(savedOrder);
     }
 }

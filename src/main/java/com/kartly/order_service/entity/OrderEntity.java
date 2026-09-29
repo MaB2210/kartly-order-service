@@ -28,6 +28,9 @@ public class OrderEntity {
 
     private LocalDateTime createdAt = LocalDateTime.now(java.time.ZoneOffset.UTC);
 
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status = OrderStatus.PENDING;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItemEntity> items = new ArrayList<>();
 }

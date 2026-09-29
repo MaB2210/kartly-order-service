@@ -1,0 +1,13 @@
+package com.kartly.order_service.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+public class ProcessPaymentRequest {
+    private Long orderId;
+    private BigDecimal amount;
+}
