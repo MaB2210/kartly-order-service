@@ -22,12 +22,14 @@ public class OrderService {
     private final ProductClient productClient;
     private final UserClient userClient;
     private final PaymentClient paymentClient;
+    private final OrderEventPublisher orderEventPublisher;
 
-    public OrderService(OrderRepository orderRepository, ProductClient productClient, UserClient userClient, PaymentClient paymentClient) {
+    public OrderService(OrderRepository orderRepository, ProductClient productClient, UserClient userClient, PaymentClient paymentClient, OrderEventPublisher orderEventPublisher) {
         this.orderRepository = orderRepository;
         this.productClient = productClient;
         this.userClient = userClient;
         this.paymentClient = paymentClient;
+        this.orderEventPublisher = orderEventPublisher;
     }
 
     public List<OrderEntity> getAllOrders() {
@@ -78,9 +80,25 @@ public class OrderService {
         try{
             paymentClient.processPayment(paymentRequest);
             savedOrder.setStatus(OrderStatus.CONFIRMED);
+
+            OrderStatusEvent event = new OrderStatusEvent();
+            event.setOrderId(savedOrder.getId());
+            event.setUserId(savedOrder.getUserId());
+            event.setTotalAmount(savedOrder.getTotalAmount());
+            event.setStatus(OrderStatus.CONFIRMED.name());
+            orderEventPublisher.publishOrderStatus(event);
+
         } catch(Exception ex){
             savedOrder.setStatus(OrderStatus.PAYMENT_FAILED);
             orderRepository.save(savedOrder);
+
+            OrderStatusEvent event = new OrderStatusEvent();
+            event.setOrderId(savedOrder.getId());
+            event.setUserId(savedOrder.getUserId());
+            event.setTotalAmount(savedOrder.getTotalAmount());
+            event.setStatus(OrderStatus.PAYMENT_FAILED.name());
+            orderEventPublisher.publishOrderStatus(event);
+
             throw new PaymentFailedException("Payment failed for order" +savedOrder.getId() + ": " + ex.getMessage());
         }
 
