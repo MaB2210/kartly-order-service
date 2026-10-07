@@ -62,6 +62,7 @@ public class OrderService {
             OrderItemEntity item = new OrderItemEntity();
             item.setProductId(product.getId());
             item.setProductName(product.getName());
+            item.setUnitPrice(product.getPrice());
             item.setQuantity(itemRequest.getQuantity());
             item.setOrder(order);
             order.getItems().add(item);
